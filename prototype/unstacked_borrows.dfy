@@ -22,11 +22,14 @@ class Pointer {
   // Create a mutable ref from passed ptr
   // Memory location is owned by new reference
   constructor toMutBorrowRef(c: Ctx, tagmem: array<nat>, p: Pointer)
-    requires p.addr >= 0 && p.addr < tagmem.Length
+    requires 0 <= p.addr < tagmem.Length;
+    // AG: should not there be a requires that borrow is legal. 
+    // AG: for example, p.tag must be on the stack, which will be something like
+    // requires tagmem[p.addr] >= p.tag 
     modifies c, tagmem;
-    ensures addr == p.addr
+    ensures addr == p.addr;
     ensures c.counter == old(c.counter) + 1;
-    ensures addr >= 0 && addr < tagmem.Length
+    ensures 0 <= addr < tagmem.Length;
     ensures tagmem[addr] == tag;
     ensures forall a :: 0 <= a < tagmem.Length && a != addr ==> tagmem[a] == old(tagmem[a])
   {
@@ -40,11 +43,11 @@ class Pointer {
   // Create a mutable raw (ptr) from passed ptr
   // Memory location is owned by new raw (ptr)
   constructor toMutBorrowRaw(c: Ctx, tagmem: array<nat>, p: Pointer)
-    requires p.addr >= 0 && p.addr < tagmem.Length
+    requires 0 <= p.addr < tagmem.Length;
     modifies c, tagmem;
     ensures addr == p.addr;
     ensures c.counter == old(c.counter) + 1;
-    ensures addr >= 0 && addr < tagmem.Length;
+    ensures 0 <= addr < tagmem.Length;
     ensures tagmem[addr] == tag;  
     ensures forall a :: 0 <= a < tagmem.Length && a != addr ==> tagmem[a] == old(tagmem[a])
 
@@ -57,12 +60,12 @@ class Pointer {
 
   // Create a mutable ref from passed address
   // Memory location is owned by mutable ref
-  constructor fromAddr(c: Ctx,tagmem: array<nat>, a: nat)
-    requires a >= 0 && a < tagmem.Length
+  constructor fromAddr(c: Ctx, tagmem: array<nat>, a: nat)
+    requires 0 <= a < tagmem.Length;
     modifies c, tagmem;
     ensures addr == a;
     ensures c.counter == old(c.counter) + 1;
-    ensures addr >= 0 && addr < tagmem.Length
+    ensures 0 <= addr < tagmem.Length
     ensures tagmem[a] == tag;    
     ensures forall l :: 0 <= l < tagmem.Length && a != l ==> tagmem[l] == old(tagmem[l])
 
@@ -75,18 +78,18 @@ class Pointer {
 
   // Read memory location through this ptr 
   //
-  // if ptr does not have read access then return any number
-  // other than expected value.
+  // if ptr does not have read access then return a non-deterministic value
   method read(mem: array<int>, tagmem: array<nat>) returns (r: int)
-    requires mem.Length == tagmem.Length
-    requires addr >= 0 && addr < tagmem.Length
-    ensures addr >= 0 && addr < tagmem.Length
+    requires mem.Length == tagmem.Length;
+    requires 0 <= addr < tagmem.Length;
+    ensures 0 <= addr < tagmem.Length;
     ensures (tagmem[addr] == tag) ==> r == mem[addr]
   {
     if (tagmem[addr] == tag) {
       return mem[addr];
     } else {
       var x: nat := *;
+      // AG: I don't think this assumption is necessary
       assume (x != mem[addr]);
       return x;
     }
@@ -95,11 +98,13 @@ class Pointer {
   // Write to memory location through this ptr
   // 
   // if ptr does not have write access then this is a NOP
+  // AG: actually if no write access, then non-deterministic value is written
+  // AG: This follows from ensures that relates mem and old(mem)
   method write(mem: array<int>, tagmem: array<nat>, v: nat)
     requires mem.Length == tagmem.Length
-    requires addr >= 0 && addr < tagmem.Length
+    requires 0 <= addr < tagmem.Length
     modifies mem
-    ensures addr >= 0 && addr < tagmem.Length
+    ensures 0 <= addr < tagmem.Length
     ensures (tagmem[addr] == tag) ==>  mem[addr] == v;
     ensures forall l :: 0 <= l < mem.Length && addr != l ==> mem[l] == old(mem[l])
   {
@@ -112,7 +117,7 @@ class Pointer {
 
 // Update ownership tag value at addr
 method set_owner(tagmem:array<nat>, addr: nat, tag: nat)
-  requires addr >= 0 && addr < tagmem.Length
+  requires 0 <= addr < tagmem.Length
   modifies tagmem;
   ensures tagmem[addr] == tag;
   ensures forall a :: 0 <= a < tagmem.Length && a != addr ==> tagmem[a] == old(tagmem[a])
@@ -122,7 +127,7 @@ method set_owner(tagmem:array<nat>, addr: nat, tag: nat)
 }
 
 method get_owner(tagmem:array<nat>, addr: nat) returns (o: nat)
-  requires addr >= 0 && addr < tagmem.Length
+  requires 0 <= addr < tagmem.Length
   ensures o == tagmem[addr];
 {
   o := tagmem[addr];
@@ -155,11 +160,16 @@ method bad_client(mem:array<int>, tagmem: array<nat>)
   requires mem.Length == tagmem.Length;
   modifies mem, tagmem;
 {
+  // AG: you can encapsulate not just the counter but also memory in Ctx
+  // AG: and rename Ctx into State. Then you can do State.write(p, v) and 
+  // AG: State.read(p), where p is a Pointer, and v a value. Arrays mem and tagmem
+  // AG: will be hidden inside State. 
   var c := new Ctx;
   c.counter := 0;
   // let mut local = 5;
   var local: nat := *;
   assume(0 < local < mem.Length);
+  // AG: you should turn local into a pointer and use Pointer.write to set the value
   mem[local] := 5;
   // let raw_pointer = &mut local as *mut i32;
   var localref: Pointer := new Pointer.fromAddr(c, tagmem, local);
@@ -178,6 +188,9 @@ method bad_client(mem:array<int>, tagmem: array<nat>)
 
   // arg1 and arg2 point to the same location and hence stack principle
   // is violated here
+  // AG: should add explicit requires on read/write to catch the error
+  // AG: now the error is indirect by making memory operations return unexpected values 
+  // AG: when stacked borrows is violated
   assert(result == 42);
 }
 
