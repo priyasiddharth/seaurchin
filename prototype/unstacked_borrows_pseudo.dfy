@@ -1,4 +1,4 @@
-datatype Tag = Unique(t: nat, c: nat) | SharedRO(t: nat, c:nat) | SharedRW(t: nat, c: nat) 
+datatype Tag = Unique(t: nat, c: nat) | SharedRO(t: nat, c:nat)   
               | Disabled | Owner
 
 class State {
@@ -42,11 +42,10 @@ predicate invalidTag(addr: nat, tag: Tag)
  {
     match (tagmem[addr], tag)
     case (Unique(n1, c1), Unique(n2, c2)) => 
-     if (rawfrom[addr] != -1) then n2 != n1 
+     if (rawfrom[addr] != -1) then n2 != n1
       else n1 < n2
     case (SharedRO(n1, c1), Unique(n2, c2)) => n1 < n2
-    case (Unique(n1, c1), SharedRO(n2, c2)) => n2 <= n2
-    case (SharedRW(n1, c1), SharedRO(n2, c2)) => n2 <= n2
+    case (Unique(n1, c1), SharedRO(n2, c2)) => n2 < n1
     case (SharedRO(n1, c1), SharedRO(n2, c2)) => false
     case (Owner, _) => false
     case (_, _) => true
@@ -83,7 +82,6 @@ reads this, tagmem, rawfrom, mem;
    { 
       match p.tag
       case Unique(t, c)  => true
-      case SharedRW(t, c) =>  true
       case _ => false
    }
    
@@ -102,9 +100,7 @@ reads this, tagmem, rawfrom, mem;
      case Unique(t, c) =>
        mem[p.addr] := v;
        tagmem[p.addr] := p.tag;
-     case SharedRW(t, c) =>
-        tagmem[p.addr] := p.tag; // update the top
-        mem[p.addr] := v;
+     
    }
    
    method read(p: Pointer) returns (r: int)
@@ -123,8 +119,7 @@ reads this, tagmem, rawfrom, mem;
         tagmem[p.addr] := p.tag;
      case SharedRO(t, c) =>
       // nothing to do
-     case SharedRW(t, c) => 
-      // ?
+     
      case _ => // ?
    }
 } 
@@ -206,11 +201,7 @@ ensures s.valid() && ret.valid(s);
       s.rawfrom[p.addr] := t;
       ret := new Pointer(p.addr, newtag, s);
       assert ret.tag.t == s.tagmem[p.addr].t;
-//  case Unique(t, c) =>
-//      var newtag := SharedRWBot;
-//      var ret := new Pointer(p.addr, newtag, s);
-//      s.tagmem[p.addr] := newtag;
-//      s.rawfrom[p.addr] := true;
+
 }
 
 
