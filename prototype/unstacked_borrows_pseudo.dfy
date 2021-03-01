@@ -1,23 +1,23 @@
 datatype Tag = Unique(t: nat, c: nat) | SharedRO(t: nat, c:nat) | SharedRW(t: nat, c: nat) 
-              | Disabled | Unknown
+              | Disabled | Owner
 
 class State {
    var counter: nat; // used to generate new id
    var mem: array<int>;
    var tagmem: array<Tag>;
    
-   // the tag from which a rawfrom ponter bprrow
+   // the tag from which a raw ponter borrows from
    var rawfrom: array<int>;  
 
    constructor(mem: array<int>)
    ensures fresh(tagmem) && fresh(rawfrom);
    ensures this.mem == mem && counter == 0;
-   ensures forall i:: 0 <= i && i < tagmem.Length ==> tagmem[i] == Unknown;
+   ensures forall i:: 0 <= i && i < tagmem.Length ==> tagmem[i] == Owner;
    ensures forall i:: 0 <= i && i < rawfrom.Length ==> rawfrom[i] == -1;
    ensures valid();
    {
      this.mem := mem;
-     tagmem := new Tag[mem.Length](_ => Unknown);
+     tagmem := new Tag[mem.Length](_ => Owner);
      rawfrom := new int[mem.Length](_ => -1);
      counter := 0;
      
@@ -48,7 +48,7 @@ predicate invalidTag(addr: nat, tag: Tag)
     case (Unique(n1, c1), SharedRO(n2, c2)) => n2 <= n2
     case (SharedRW(n1, c1), SharedRO(n2, c2)) => n2 <= n2
     case (SharedRO(n1, c1), SharedRO(n2, c2)) => false
-    case (Unknown, _) => false
+    case (Owner, _) => false
     case (_, _) => true
 }  
 
@@ -57,9 +57,9 @@ requires valid() && valid_addr(addr);
 reads this, tagmem, rawfrom, mem;
 {
   
-   tagmem[addr] == Unknown 
+   tagmem[addr] == Owner 
    ||  
-   (tagmem[addr] != Unknown ==> !invalidTag(addr, tag))
+   (tagmem[addr] != Owner ==> !invalidTag(addr, tag))
 }
     
    
@@ -104,7 +104,7 @@ reads this, tagmem, rawfrom, mem;
        tagmem[p.addr] := p.tag;
      case SharedRW(t, c) =>
         tagmem[p.addr] := p.tag; // update the top
-         mem[p.addr] := v;
+        mem[p.addr] := v;
    }
    
    method read(p: Pointer) returns (r: int)
@@ -165,7 +165,6 @@ ensures s.tagmem[p.addr] == ret.tag && s.rawfrom[p.addr] == -1;
 ensures ret.addr == p.addr && ret.tag == Unique(s.counter, p.tag.c);
 ensures fresh(ret);
 ensures s.valid() && ret.valid(s);
-// ensures s.valid() && p.valid(s);
 {
   var newID := s.generateID();
   
@@ -251,9 +250,7 @@ method mutableTest(mem:array<int>)
   var local1: nat;
   var tag1 := s.generateID();
   if(0 < local1 < mem.Length){
-    assert s.tagmem[local1] == Unknown;
     mem[local1] := 5;
-    assert s.tagmem[local1] == Unknown;
     var ref1: Pointer := new Pointer(local1, Unique(tag1, 1), s);
   
     var ref2: Pointer := createMutableRef(ref1, s);
@@ -281,10 +278,11 @@ method mutableRawTest(mem:array<int>)
       var ref1: Pointer := new Pointer(local1, Unique(tag1, 1), s);
      // s.write(ref1, 42);
       var ref2: Pointer := createMutableRawRef(ref1, s);
-      
       assert(ref2.valid(s));
+
       var ref3: Pointer := createMutableRawRef(ref1, s);
-      assert(ref3.valid(s));
+      assert(!ref2.valid(s));
+
       var ref4: Pointer := createMutableRawRef(ref1, s);
       assert(!ref3.valid(s));
     }
