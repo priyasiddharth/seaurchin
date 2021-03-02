@@ -44,9 +44,9 @@ predicate invalidTag(addr: nat, tag: Tag)
     case (Unique(n1, c1), Unique(n2, c2)) => 
      if (rawfrom[addr] != -1) then n2 != n1
       else n1 < n2
-    case (SharedRO(n1, c1), Unique(n2, c2)) => n1 < n2
+    case (SharedRO(n1, c1), Unique(n2, c2)) => false  // unknown
     case (Unique(n1, c1), SharedRO(n2, c2)) => n2 < n1
-    case (SharedRO(n1, c1), SharedRO(n2, c2)) => false
+    case (SharedRO(n1, c1), SharedRO(n2, c2)) => false  // unknown
     case (Owner, _) => false
     case (_, _) => true
 }  
