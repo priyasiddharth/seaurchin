@@ -26,7 +26,8 @@ class State {
    predicate valid()
    reads this, mem, tagmem, rawfrom;
    {
-    mem.Length == tagmem.Length && mem.Length == rawfrom.Length 
+    mem.Length == tagmem.Length && mem.Length == rawfrom.Length &&
+    forall i:: 0 <= i && i < tagmem.Length && tagmem[i].Unique? ==> tagmem[i].t <= counter
    } 
 
    predicate valid_addr(addr: int)
@@ -44,7 +45,9 @@ predicate invalidTag(addr: nat, tag: Tag)
     case (Unique(n1, c1), Unique(n2, c2)) => 
      if (rawfrom[addr] != -1) then n2 != n1
       else n1 < n2
-    case (SharedRO(n1, c1), Unique(n2, c2)) => false  // unknown
+    case (SharedRO(n1, c1), Unique(n2, c2)) => 
+     if (rawfrom[addr] != -1) then true 
+     else false  // unknown
     case (Unique(n1, c1), SharedRO(n2, c2)) => n2 < n1
     case (SharedRO(n1, c1), SharedRO(n2, c2)) => false  // unknown
     case (Owner, _) => false
@@ -67,13 +70,23 @@ reads this, tagmem, rawfrom, mem;
    modifies this;
    ensures counter == old(counter) + 1 && ret == counter;
    ensures mem == old(mem) && tagmem == old(tagmem) && rawfrom == old(rawfrom);
-   ensures forall i :: 0 <= i && i < tagmem.Length  ==> tagmem[i] == old(tagmem[i]);
-   ensures forall i :: 0 <= i && i < rawfrom.Length  ==> rawfrom[i] == old(rawfrom[i]);
+   ensures forall i:: 0 <= i && i < tagmem.Length && tagmem[i].Unique? ==> tagmem[i].t < ret; 
    ensures valid();
    {
      counter := counter + 1;
      ret := counter;
    }
+
+   predicate valid_predecessor(tag: Tag, predec: Tag)
+   reads this;
+   {
+     match (tag, predec)
+       case (Unique(n1, c1), Unique(n2, c2)) =>  n2 < n1
+       case (SharedRO(n1, c1), Unique(n2, c2)) => n2 < n1
+       case (_, Owner) => true
+       case _ => false 
+   }
+   
    
    predicate isWritable(p: Pointer)
    requires valid();
@@ -130,27 +143,33 @@ reads this, tagmem, rawfrom, mem;
 class Pointer{
   var addr: nat;
   var tag: Tag;
+  var predecessor: Tag; // the upperbound of the predecessor
   
  predicate valid(s: State)
  requires s.valid();
  reads s, s.tagmem, s.rawfrom, s.mem, this;
  {
-    s.valid_addr(addr) && s.validTag(addr, tag)
+    s.valid_addr(addr) && valid_predecessor(this.predecessor) &&
+    s.validTag(addr, tag) && (tag.Unique?  ==> tag.t <= s.counter)
  }
- 
- constructor(addr: nat, tag: Tag, s: State) 
+
+  constructor(addr: nat, tag: Tag, predecessor: Tag, s: State) 
   requires s.valid() && s.valid_addr(addr);
-  requires s.validTag(addr, tag);
-  ensures this.addr == addr && this.tag == tag;
+  requires s.validTag(addr, tag) && s.valid_predecessor(tag, predecessor);
+  requires tag.Unique? ==> tag.t == s.counter;
+  ensures this.addr == addr && this.tag == tag && /* this.predecessor == predecessor */ s.valid_predecessor(tag, this.predecessor); // under specified
+  // ensures this.addr == addr && this.tag == tag && this.predecessor == predecessor;
   ensures valid(s);
   {
     this.addr := addr;
     this.tag := tag;
+    this.predecessor := predecessor;
   }
 }
 
 method createMutableRef(p: Pointer, s: State) returns(ret: Pointer)
 requires s.valid() &&  s.valid_addr(p.addr) /* p.valid(s) */ && p.tag.Unique?;
+requires p.tag.Unique? ==> p.tag.t <= s.counter;
 modifies s, s.tagmem, s.rawfrom;
 ensures s.tagmem == old(s.tagmem) && s.mem == old(s.mem) && s.rawfrom == old(s.rawfrom);
 ensures s.counter == old(s.counter) + 1;
@@ -168,7 +187,7 @@ ensures s.valid() && ret.valid(s);
        var newtag := Unique(newID, c?);
        s.tagmem[p.addr] := newtag;
        s.rawfrom[p.addr] := -1;
-       ret := new Pointer(p.addr, newtag, s);
+       ret := new Pointer(p.addr, newtag, p.tag, s);
    // case _ =>
    //    ret := new Pointer(p.addr, Disabled, s);
        // todo
@@ -232,7 +251,7 @@ ensures s.valid() && ret.valid(s);
 }
 
 // This client follows stack principle
-method mutableTest(mem:array<int>)
+method mutableTest1(mem:array<int>)
   modifies mem;
 {
   var s := new State(mem);
@@ -242,15 +261,40 @@ method mutableTest(mem:array<int>)
   var tag1 := s.generateID();
   if(0 < local1 < mem.Length){
     mem[local1] := 5;
-    var ref1: Pointer := new Pointer(local1, Unique(tag1, 1), s);
+    
+    // let x = & mut local;
+    var ref1: Pointer := new Pointer(local1, Unique(tag1, 1), Owner, s);
   
+    // let y = & mut local;
+    var tag2 := s.generateID();
+    var ref2: Pointer := new Pointer(local1, Unique(tag2, 1), Owner, s);
+    
+    assert(!ref1.valid(s));
+  
+    
+  }
+}
+
+method mutableTest2(mem:array<int>)
+  modifies mem;
+{
+  var s := new State(mem);
+      
+  // let mut local1 = 5;
+  var local1: nat;
+  var tag1 := s.generateID();
+  if(0 < local1 < mem.Length){
+    mem[local1] := 5;
+    // let x = & mut local1
+    var ref1: Pointer := new Pointer(local1, Unique(tag1, 1), Owner, s);
+    // let y = & mut *x
     var ref2: Pointer := createMutableRef(ref1, s);
     
     assert(ref2.valid(s));
   
-    // function call starts
+    // write(x)
     s.write(ref1, 42);
-   // s.write(ref2, 13);
+    
     assert !ref2.valid(s);
   }
 }
