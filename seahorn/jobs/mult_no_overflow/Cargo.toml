@@ -1,0 +1,19 @@
+[package]
+name = "verification-job"
+version = "0.1.0"
+authors = [
+        "Alastair Reid <adreid@google.com>",
+        "Shaked Flur <sflur@google.com>"
+        ]
+edition = "2018"
+description = "verification job"
+categories = ["development-tools::testing"]
+keywords = ["klee", "crux", "seahorn", "mir", "verification", "testing"]
+license = "MIT OR Apache-2.0"
+
+[features]
+verifier-seahorn = []
+
+[dependencies.verification-annotations]
+path = "../../lib/verification-annotations"
+features = ["verifier-seahorn"]        
