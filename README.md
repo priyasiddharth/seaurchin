@@ -24,3 +24,5 @@ export SEAHORN_ROOT=$HOME/seahorn/seahorn/build-dbg/run
 ```
 ./urchin rpf  --command=bpf seahorn/jobs/mult_no_overflow/ -v1
 ```
+
+The `urchin` script will look for `Cargo.toml` in the given directory.
