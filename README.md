@@ -26,4 +26,6 @@ export SEAHORN_ROOT=$HOME/seahorn/seahorn/build-dbg/run
 ./urchin rpf  --command=bpf seahorn/jobs/mult_no_overflow/ -v1
 ```
 
-The `urchin` script will look for `Cargo.toml` in the given directory.
+### Additional info
+* The `urchin` script will look for `Cargo.toml` in the given directory.
+* The docker build script and Rust verification tools are [here](https://github.com/priyasiddharth/rust-verification-tools/tree/external).
