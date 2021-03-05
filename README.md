@@ -17,6 +17,7 @@ git clone https://github.com/priyasiddharth/seaurchin.git && cd seaurchin
 export SEAHORN_ROOT=$HOME/seahorn/seahorn/build-dbg/run
 ```
 3. Run verification job
+> **INFO**: The first run will download the docker image. It will take ~5 minutes.
 ```
 ./urchin rpf  --command=bpf seahorn/jobs/mult_no_overflow/
 ```
