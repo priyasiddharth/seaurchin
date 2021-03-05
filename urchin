@@ -67,12 +67,22 @@ def main(argv):
                             help='Verbosity level', metavar='N')
             ap.add_argument('--test', dest='test_name',
                             metavar='TEST_NAME', help='Name of Test', default=None)
+            ap.add_argument('--local', action='store_true', default=False,
+                              help='Use local cargo-verify')
             sea.add_tmp_dir_args(ap)
             sea.add_in_out_args(ap)
             _add_S_arg(ap)
             return ap
 
         def _construct_out_filename(self, in_file, ext, work_dir):
+            """
+            Construct an out filename
+
+            :param in_file: the input file path
+            :param ext: the extension of the output file
+            :param work_dir: the workdir is ignored
+            :return: the output file path. It is in the 'target' dir of Cargo project
+            """
             dir, base = os.path.split(in_file)
             if base == '':
                 base = os.path.basename(dir)
@@ -93,12 +103,19 @@ def main(argv):
             if _bc_or_ll_file(args.in_files[0]):
                 raise IOError('Cargo does not accept ll/bc file')
 
-            cmd_name = sea.which(['cargo-verify'])
+            argv = list()
+            if args.local:
+                cmd_name = sea.which(['cargo-verify'])
+            else:
+                script_dir = os.path.abspath(sys.argv[0])
+                script_dir = os.path.dirname(script_dir)
+                cmd_name = os.path.join(script_dir, 'cargo-verify')
+                # cmd to pass to docker container
+                argv.extend(['cargo-verify'])
 
             if cmd_name is None: raise IOError('cargo-verify not found')
             self.cargoCmd = sea.ExtCmd(cmd_name, '', quiet)
 
-            argv = list()
             if out_file is not None:
                 argv.extend(['-o', out_file])
             input_file = args.in_files[0]
@@ -132,6 +149,9 @@ def main(argv):
 
         def mk_arg_parser(self, ap):
             class EnhancedArgParser(argparse.ArgumentParser):
+                """
+                This ArgParser overrides print_help() behaviour to print help of contained cmd.
+                """
                 def __init__(self, prog, description='', add_help=False, subc=None):
                     super().__init__(prog=prog, description=description, add_help=add_help)
                     self.subc = subc
