@@ -16,10 +16,11 @@ readonly X11="--net=host --env=DISPLAY --volume=$HOME/.Xauthority:/home/$USER/.X
 docker run \
     -e LOCAL_USER_ID=`id -u $USER` \
     -e LOCAL_GROUP_ID=`id -g $USER` \
+    --user 0:0 \
     --rm \
     -v ${MOUNT_RVT} \
     -v ${MOUNT_PWD} \
     --workdir ${PWD} \
+    -it \
     ${X11}\
-    ${IMAGE} $*
-
+    ${IMAGE} env HOME=/home/s2priya $*
