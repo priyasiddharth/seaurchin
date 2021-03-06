@@ -84,6 +84,9 @@ def main(argv):
             :return: the output file path. It is in the 'target' dir of Cargo project
             """
             dir, base = os.path.split(in_file)
+            if os.path.isdir(in_file):
+                dir = in_file
+                base = ''
             if base == '':
                 base = os.path.basename(dir)
             out_base = os.path.splitext(base)[0] + ext
