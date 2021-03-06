@@ -12,7 +12,8 @@ readonly MOUNT_RVT="${RVT_SRC}:${RVT_DST}:rw"
 # based on https://dzone.com/articles/docker-x11-client-via-ssh
 readonly X11="--net=host --env=DISPLAY --volume=$HOME/.Xauthority:/home/$USER/.Xauthority:rw"
 
-# TODO: add image pull cmd once things are stable
+docker pull ${IMAGE}
+
 docker run \
     -e LOCAL_USER_ID=`id -u $USER` \
     -e LOCAL_GROUP_ID=`id -g $USER` \
@@ -23,4 +24,5 @@ docker run \
     --workdir ${PWD} \
     -it \
     ${X11}\
-    ${IMAGE} env HOME=/home/s2priya $*
+    ${IMAGE} env HOME=/home/creator $*
+
