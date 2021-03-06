@@ -88,7 +88,7 @@ def main(argv):
                 base = os.path.basename(dir)
             out_base = os.path.splitext(base)[0] + ext
             out_file = os.path.join(dir, 'target', out_base)
-            return out_file
+            return os.path.abspath(out_file)
 
         def name_out_file(self, in_files, args=None, work_dir=None):
             in_file = in_files[0]
@@ -118,7 +118,7 @@ def main(argv):
 
             if out_file is not None:
                 argv.extend(['-o', out_file])
-            input_file = args.in_files[0]
+            input_file =  os.path.abspath(args.in_files[0])
             if os.path.isdir(input_file):
                 _input_file = os.path.join(input_file, 'Cargo.toml')
                 if os.path.isfile(_input_file):
