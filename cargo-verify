@@ -13,7 +13,6 @@ readonly MOUNT_RVT="${RVT_SRC}:${RVT_DST}:rw"
 readonly X11="--net=host --env=DISPLAY --volume=$HOME/.Xauthority:/home/$USER/.Xauthority:rw"
 
 docker pull ${IMAGE}
-
 docker run \
     -e LOCAL_USER_ID=`id -u $USER` \
     -e LOCAL_GROUP_ID=`id -g $USER` \
@@ -23,6 +22,6 @@ docker run \
     -v ${MOUNT_PWD} \
     --workdir ${PWD} \
     -it \
-    ${X11}\
-    ${IMAGE} env HOME=/home/creator $*
+    ${X11} \
+    ${IMAGE} env HOME=/home/creator CARGO_HOME=${PWD} $*
 
