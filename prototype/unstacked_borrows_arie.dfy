@@ -66,36 +66,6 @@ class State {
            }
      }
    }
-
-   
-   
-   method write(p: Pointer, v: int)
-     requires p.valid(this) && isWritable(p);
-     modifies mem, tagmem;
-   {
-     match p.tag
-     case Unique(t, c) =>
-       use1(p);
-       mem[p.addr] := v;
-     case SharedRW(t, c) =>
-        tagmem[p.addr] := p.tag; // update the top
-         mem[p.addr] := v;
-   }
-   
-    
-   method read(p: Pointer) returns (r: int)
-   requires p.valid(this);
-   {
-     r := mem[p.addr];
-     match p.tag
-     case Unique(t, c) =>
-        use1(p);
-     case SharedRO(t, c) =>
-      // nothing to do
-     case SharedRW(t, c) => 
-      // ?
-     
-   }
 } 
    
 
