@@ -32,5 +32,8 @@ export SEAHORN_ROOT=$HOME/seahorn/seahorn/build-dbg/run
 ```
 
 ### Additional info
+
+* The `urchin` script should always be started from a directory which is a parent to all the code (main project, local dependencies). 
+  * This is because we only `$PWD` is mounted on docker rather than a large surface area like `$HOME`.  
 * The `urchin` script will look for `Cargo.toml` in the given directory.
 * The docker build script and Rust verification tools are [here](https://github.com/priyasiddharth/rust-verification-tools/tree/external).
