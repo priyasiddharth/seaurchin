@@ -21,9 +21,14 @@ export SEAHORN_ROOT=$HOME/seahorn/seahorn/build-dbg/run
 ```
 ./urchin rpf  --command=bpf seahorn/jobs/mult_no_overflow/
 ```
-4. Run verification job (verbose). This is useful to see compilation errors
+4. Run verification job (verbose). This is useful to see compilation errors.
 ```
 ./urchin rpf  --command=bpf seahorn/jobs/mult_no_overflow/ -v1
+```
+
+5. For some verification jobs, the verification entry point is a `test`. 
+```
+./urchin rpf seahorn/jobs/refcell_panic/ --test test_nopanic
 ```
 
 ### Additional info
