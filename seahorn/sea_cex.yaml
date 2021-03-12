@@ -1,6 +1,7 @@
 verify_options:
-# Optimization lelel. Lower to O1 for clearer counterexamples
-  '-O1': ''
+# Optimization lelel. Lower to O2 for clearer counterexamples
+# With O1 certain 'recursive' functions are not inlined'
+  '-O2': ''
 # 
 # PREPROCESSING
 #

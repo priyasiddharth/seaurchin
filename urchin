@@ -213,7 +213,7 @@ def main(argv):
                               help='Do not produce any output')
             argp.add_argument('--expect', type=str, default=None,
                               help='Expected string in the output')
-            argp.add_argument('--command', type=str, default='fpf',
+            argp.add_argument('--command', type=str, default='bpf',
                               help='sea command')
             argp.add_argument('--cex', action='store_true', default=False,
                               help='Counterexample mode')
