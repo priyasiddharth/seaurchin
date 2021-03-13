@@ -1,0 +1,17 @@
+[package]
+name = "list_valid"
+version = "0.1.0"
+authors = ["Siddharth Priya <priya.siddharth@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+lists = { path="../../lib/lists" }
+
+[features]
+verifier-seahorn = []
+
+[dependencies.verification-annotations]
+path = "../../lib/verification-annotations"
+features = ["verifier-seahorn"]

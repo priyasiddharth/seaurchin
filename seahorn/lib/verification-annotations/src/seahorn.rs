@@ -15,14 +15,28 @@ use std::convert::TryInto;
 
 pub use crate::traits::*;
 
+use std::os::raw::{c_char};
+use core::mem;
+
 extern {
     fn __VERIFIER_error() -> !;
     fn __VERIFIER_assume(pred: i32);
+    // TODO: How to add attribute __malloc__
+    // TODO: wrap in a rust fn
+    pub fn nd_voidp() -> *mut u8;
+    // TODO: Make printf placeholder work
+    pub fn sea_printf(format: *const c_char, ...);
+    fn sea_is_dereferenceable(ptr: *mut u8, offset: usize) -> bool;
 }
 
 #[no_mangle]
 fn spanic() -> ! {
     abort();
+}
+
+
+pub unsafe fn ptr_is_dereferenceable<T>(ptr: *mut T) -> bool {
+    sea_is_dereferenceable(ptr.cast(), mem::size_of::<T>())
 }
 
 /// Reject the current execution with a verification failure.
@@ -37,7 +51,7 @@ pub fn abort() -> ! {
 ///
 /// Any paths found must satisfy this assumption.
 pub fn assume(pred: bool) {
-    if ! pred {
+    if !pred {
         unsafe { __VERIFIER_assume(pred as i32); }
     }
 }
@@ -138,13 +152,13 @@ impl VerifierNonDet for bool {
     }
 }
 
-impl <T: VerifierNonDet + Default> AbstractValue for T {
+impl<T: VerifierNonDet + Default> AbstractValue for T {
     fn abstract_value() -> Self {
         Self::verifier_nondet(Self::default())
     }
 }
 
-impl <T: VerifierNonDet + Default> Symbolic for T {
+impl<T: VerifierNonDet + Default> Symbolic for T {
     fn symbolic(_desc: &'static str) -> Self {
         Self::verifier_nondet(Self::default())
     }

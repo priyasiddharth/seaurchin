@@ -9,7 +9,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <stdbool.h>
 
 void __VERIFIER_error() {
   fprintf(stderr, "ERROR: a verification assertion failed.");
@@ -32,9 +31,6 @@ void sea_printf(const char *format,  ...) {
   fprintf(stderr, format, args);
 }
 
-bool sea_is_dereferenceable(uint8_t * ptr, size_t offset) {
-  return 0;
-}
 uint8_t   __VERIFIER_nondet_u8()    { return 0; }
 uint16_t  __VERIFIER_nondet_u16()   { return 0; }
 uint32_t  __VERIFIER_nondet_u32()   { return 0; }
