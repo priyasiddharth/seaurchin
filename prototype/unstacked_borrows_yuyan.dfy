@@ -198,7 +198,6 @@ class Pointer
   {
       match this.tag
       case Unique? => s.use_mutable(this);
-      case SharedRW? => s.use_raw(this);
       case SharedRO? => s.use_shareread(this);
   }
 
