@@ -1,5 +1,5 @@
 // if the callid != 0, then it is protected
-// otherwise it is not protected  
+// it the callid == 0, the it is not protected
 datatype Tag = Unique(t: nat, c: nat) | SharedRO(t: nat, c: nat) | SharedRW(t: nat, c: nat) 
 
 datatype MaybePointer = None | Some(p:Pointer)
@@ -73,7 +73,7 @@ class State {
              case Unique(_, c) => assert c == 0;
              case SharedRO(_, c) => assert c == 0;
              case SharedRW(_, c) => assert c == 0;
-               
+
              this.ptrOnStack := None;
            }
 
@@ -238,10 +238,10 @@ class Pointer
   modifies s;
   {
       // retagging achieves the desried effect by basically performing a reborrow.
+      // retagging only applies to mut_borrow and shared_borrow (page 41:17)
       match this.tag
       case Unique(_, _) =>  np := mut_borrow(s, funID);
       case SharedRO(_, _) => np := shared_borrow(s, funID);
-      case SharedRW(_, _) => np := raw_borrow(s, funID);
   }
   
   method write(val: int, s: State) 
