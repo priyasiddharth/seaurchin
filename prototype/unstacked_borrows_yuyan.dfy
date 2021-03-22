@@ -15,18 +15,15 @@ class State {
    // ptrOnStack == None, tracked_tag == Unique(t), t > 0
    //     ==> pointer p is tracked, but was removed from the stack, 
   //          using it is an error
-  // read ==> SharedROs are all adjacent at the top 
    var ptrOnStack : MaybePointer;
    var tracked_tag : Tag;
-   var read : bool;   
-   
+      
    constructor() 
    {
      this.counter := 1;
      this.ptrOnStack := None;
      this.tracked_tag := Unique(0);
-     this.read := false;
-   }
+    }
    method newId() returns (ret: nat) 
    modifies this;
    {
@@ -37,7 +34,6 @@ class State {
    method push(p: Pointer)
    modifies this;
    {
-     read := false;
      if (*) 
      {
        this.tracked_tag := p.tag;
@@ -72,7 +68,6 @@ class State {
              this.ptrOnStack := None;
            }
 
-        this.read := false;   
      }
    }
 
@@ -80,7 +75,7 @@ class State {
    requires p.tag == this.tracked_tag ==> this.ptrOnStack != None
    modifies this;
    {
-      assert !read;
+
       // if using a pointer with tracked_tag, and the pointer is 
      // not in the stack, then this is an error
      // all other cases are ok
@@ -88,13 +83,55 @@ class State {
      {
        assert this.ptrOnStack != None;
      } 
+     else
+     {
+       // if tracked pointer is on stack, and its predecessor 
+       // is being used, then
+       //// if the predecessor is raw pointer, then this is an error
+       //// if the predecessor is mutable borrow, then it is ok (do nothing)
+
+       match this.ptrOnStack
+       case None => 
+       case Some(ptr) => 
+           assert ptr.tag == this.tracked_tag;
+           assert p.tag != ptr.tag;
+           if (ptr.ancestor == Some(p) && p.tag.SharedRW?) 
+           {
+             assert false;
+           }
+
+     }
    }
 
    method use_shareread(p: Pointer)
    modifies this;
    {
-    // check if SharedROs are all adjacent at the top
-     assert read;
+     // if using a pointer with tracked_tag, and the pointer is 
+     // not in the stack, then this is an error
+     // all other cases are ok
+     if (p.tag == this.tracked_tag) 
+     {
+       assert this.ptrOnStack != None;
+     } 
+     else
+     {
+       // if tracked pointer is on stack, and its predecessor 
+       // is being used, then
+       //// if the predecessor is mutable_borrow, then tracked pointer is removed 
+       //// from the stack
+       //// otherwise do nothing
+
+       match this.ptrOnStack
+       case None => 
+       case Some(ptr) => 
+           assert ptr.tag == this.tracked_tag;
+           assert p.tag != ptr.tag;
+           if (ptr.ancestor == Some(p) && p.tag.Unique?) 
+           {
+             this.ptrOnStack := None;
+           }
+
+     }
    }  
 } 
    
@@ -142,7 +179,6 @@ class Pointer
     if(this.tag.Unique?){
         // shared-borrow from a mutable reference  
         s.use_mutable(this);
-        s.read := true;
     } else if (this.tag.SharedRO?){
         // shared-borrow from a SharedRO reference
         s.use_shareread(this);
@@ -173,7 +209,7 @@ class Pointer
           ancestor := this.ancestor;
       }
       var id := s.newId();
-      np := new Pointer(this.addr, SharedRO(id), this, ancestor);
+      np := new Pointer(this.addr, SharedRW(id), this, ancestor);
       s.push(np);
        
       return np;
