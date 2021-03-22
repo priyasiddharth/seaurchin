@@ -1,4 +1,7 @@
-datatype Tag = Unique(t: nat) | SharedRO(t: nat) | SharedRW(t: nat) 
+// if the callid != 0, then it is protected
+// otherwise it is not protected  
+datatype Tag = Unique(t: nat, c: nat) | SharedRO(t: nat, c: nat) | SharedRW(t: nat, c: nat) 
+
 datatype MaybePointer = None | Some(p:Pointer)
 
 class State {
@@ -22,7 +25,7 @@ class State {
    {
      this.counter := 1;
      this.ptrOnStack := None;
-     this.tracked_tag := Unique(0);
+     this.tracked_tag := Unique(0, 0);
     }
    method newId() returns (ret: nat) 
    modifies this;
@@ -56,8 +59,9 @@ class State {
      else
      {
        // if tracked pointer is on stack, and its predecessor 
-       // is being used, then the tracked pointer is removed 
-       // from the stack
+       // is being used, then 
+       ///// if the tracked pointer is protected, then this is an error 
+       ////  else it is removed from the stack
        match this.ptrOnStack
        case None => 
        case Some(ptr) => 
@@ -65,6 +69,11 @@ class State {
            assert p.tag != ptr.tag;
            if (ptr.ancestor == Some(p)) 
            {
+             match p.tag
+             case Unique(_, c) => assert c == 0;
+             case SharedRO(_, c) => assert c == 0;
+             case SharedRW(_, c) => assert c == 0;
+               
              this.ptrOnStack := None;
            }
 
@@ -117,8 +126,9 @@ class State {
      {
        // if tracked pointer is on stack, and its predecessor 
        // is being used, then
-       //// if the predecessor is mutable_borrow, then tracked pointer is removed 
-       //// from the stack
+       //// if the predecessor is mutable_borrow, then 
+       //////// if tracked pointer is protected, then this is an error
+       //////// othersie tracked pointer is removed from the stack
        //// otherwise do nothing
 
        match this.ptrOnStack
@@ -128,6 +138,8 @@ class State {
            assert p.tag != ptr.tag;
            if (ptr.ancestor == Some(p) && p.tag.Unique?) 
            {
+             match p.tag
+             case Unique(t, c) => assert c == 0;
              this.ptrOnStack := None;
            }
 
@@ -155,7 +167,9 @@ class Pointer
     this.ancestor := ances;
   }
 
-  method mut_borrow(s: State) returns (np: Pointer) 
+  // if it is not protected, passing 0 to funID
+  // othersie, passing the ID, which is greater than 0.
+  method mut_borrow(s: State, funID: nat) returns (np: Pointer) 
   modifies s;
   {
     if (!this.tag.Unique?){
@@ -168,12 +182,14 @@ class Pointer
       ancestor := this.ancestor;
     }
     var id := s.newId();
-    np := new Pointer(this.addr, Unique(id), this, ancestor);
+    np := new Pointer(this.addr, Unique(id, funID), this, ancestor);
     s.push(np);
     return np;
   }
 
-  method share_borrow(s: State) returns (np: Pointer)
+  // if it is not protected, passing 0 to funID
+  // othersie, passing the ID, which is greater than 0.
+  method shared_borrow(s: State, funID: nat) returns (np: Pointer)
   modifies s;
   {
     if(this.tag.Unique?){
@@ -191,13 +207,15 @@ class Pointer
       ancestor := this.ancestor;
     }
     var id := s.newId();
-    np := new Pointer(this.addr, SharedRO(id), this, ancestor);
+    np := new Pointer(this.addr, SharedRO(id, funID), this, ancestor);
     s.push(np);
         
     return np;
   }
   
-  method raw_borrow(s: State) returns (np: Pointer)
+  // if it is not protected, passing 0 to funID
+  // othersie, passing the ID, which is greater than 0.
+  method raw_borrow(s: State, funID: nat) returns (np: Pointer)
   requires this.tag.SharedRW?
   {
       // we can only raw borrow from SharedRW
@@ -209,10 +227,21 @@ class Pointer
           ancestor := this.ancestor;
       }
       var id := s.newId();
-      np := new Pointer(this.addr, SharedRW(id), this, ancestor);
+      np := new Pointer(this.addr, SharedRW(id, funID), this, ancestor);
       s.push(np);
        
       return np;
+  }
+
+  method retag(s: State, funID: nat) returns(np: Pointer)
+  requires funID > 0;
+  modifies s;
+  {
+      // retagging achieves the desried effect by basically performing a reborrow.
+      match this.tag
+      case Unique(_, _) =>  np := mut_borrow(s, funID);
+      case SharedRO(_, _) => np := shared_borrow(s, funID);
+      case SharedRW(_, _) => np := raw_borrow(s, funID);
   }
   
   method write(val: int, s: State) 
@@ -233,8 +262,9 @@ class Pointer
   modifies s;
   {
       match this.tag
-      case Unique? => s.use_mutable(this);
-      case SharedRO? => s.use_shareread(this);
+      case Unique(_, _) => s.use_mutable(this);
+      case SharedRO(_, _) => s.use_shareread(this);
+      case SharedRW(_, _) => s.use_raw(this); 
   }
 
 
