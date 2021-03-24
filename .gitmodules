@@ -1,0 +1,5 @@
+[submodule "seahorn/lib/toolchain/rust"]
+	path = seahorn/lib/toolchain/rust
+	url = https://github.com/priyasiddharth/rust.git
+	branch = 1.46.0_seaurchin
+
