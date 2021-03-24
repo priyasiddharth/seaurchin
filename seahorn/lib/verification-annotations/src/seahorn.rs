@@ -67,39 +67,6 @@ pub fn reject() -> ! {
     panic!("Unreachable, should have been rejected!");
 }
 
-/// Detect whether the program is being run symbolically in KLEE
-/// or being replayed using the kleeRuntest runtime.
-///
-/// This is used to decide whether to display the values of
-/// variables that may be either symbolic or concrete.
-pub fn is_replay() -> bool {
-    // panic!("SeaHorn doesn't support replay.")
-    false
-}
-
-/// Reject the current execution with a verification failure
-/// and an error message.
-pub fn report_error(message: &str) -> ! {
-    // Mimic the format of klee_report_error
-    // (We don't use klee_report_error because it is not
-    // supported by the kleeRuntest library.)
-    eprintln!("SEAHORN: ERROR:{}", message);
-    abort();
-}
-
-/// Declare that failure is the expected behaviour
-pub fn expect_raw(msg: &str) {
-    eprintln!("VERIFIER_EXPECT: {}", msg)
-}
-
-/// Declare that failure is the expected behaviour
-pub fn expect(msg: Option<&str>) {
-    match msg {
-        None => eprintln!("VERIFIER_EXPECT: should_panic"),
-        Some(msg) => eprintln!("VERIFIER_EXPECT: should_panic(expected = \"{}\")", msg)
-    }
-}
-
 macro_rules! make_nondet {
     ($typ:ty, $ext:ident, $v:expr) => {
         extern { fn $ext() -> $typ; }
@@ -170,10 +137,6 @@ macro_rules! assert {
     ($cond:expr) => { $crate::assert!($cond, "assertion failed: {}", stringify!($cond)) };
     ($cond:expr, $($arg:tt)+) => {{
         if ! $cond {
-            let message = format!($($arg)+);
-            eprintln!("VERIFIER: panicked at '{}', {}:{}:{}",
-                      message,
-                      std::file!(), std::line!(), std::column!());
             $crate::abort();
         }
     }}
