@@ -12,6 +12,9 @@ readonly MOUNT_RVT="${RVT_SRC}:${RVT_DST}:rw"
 # based on https://dzone.com/articles/docker-x11-client-via-ssh
 readonly X11="--net=host --env=DISPLAY --volume=$HOME/.Xauthority:/home/$USER/.Xauthority:rw"
 
+readonly SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+
+
 docker pull ${IMAGE}
 docker run \
     -e LOCAL_USER_ID=`id -u $USER` \
@@ -23,5 +26,10 @@ docker run \
     --workdir ${PWD} \
     -it \
     ${X11} \
-    ${IMAGE} env HOME=/home/creator CARGO_HOME=${PWD} $*
+    ${IMAGE} env \
+    HOME=/home/creator \
+    XARGO_HOME=${SCRIPT_DIR}/.xargo \
+    XARGO_RUST_SRC=${SCRIPT_DIR}/seahorn/lib/toolchain/rust/src/ \
+    CARGO_HOME=${SCRIPT_DIR} \
+    $*
 
