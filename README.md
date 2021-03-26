@@ -31,6 +31,14 @@ export SEAHORN_ROOT=$HOME/seahorn/seahorn/build-dbg/run
 ./urchin rpf seahorn/jobs/refcell_panic/ --test test_nopanic
 ```
 
+
+### Modifying the bundled standard library
+1. `libstd` is bundled in `seahorn/lib/toolchain/...`. This is the standard library used by verification jobs.
+2. We use `xargo` to compile the standard library and then use the compiled artifacts to further compile the verification job.
+3. `libstd` compilation artifacts are cached in the `.xargo` directory (at root of repo, where `cargo-verify` script lives).
+4. If the cache gets stale, e.g. when one changes `libstd` source, then the `.xargo` directory must be removed.
+**NOTE**: The first verification job to be run will compile `libstd` which will take some time, subsequent runs will use the cache and be faster.
+
 ### Additional info
 
 * The `urchin` script should always be started from a directory which is a parent to all the code (main project, local dependencies). 
