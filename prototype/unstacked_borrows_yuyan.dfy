@@ -5,7 +5,9 @@ datatype Tag = Unique(t: nat, c: nat) | SharedRO(t: nat, c: nat) | SharedRW(t: n
 datatype MaybePointer = None | Some(p:Pointer)
 
 class State {
-   var counter: nat; // used to generate new id
+  // used to generate new tagid, callid and pointer's address
+  // the Rust techical appedix use different counters for tagid and callid
+   var counter: nat; 
 
    // main memory
    var mem: array<int>;
@@ -20,12 +22,15 @@ class State {
   //          using it is an error
    var ptrOnStack : MaybePointer;
    var tracked_tag : Tag;
+
+   var activeCallId: nat;
       
    constructor() 
    {
      this.counter := 1;
      this.ptrOnStack := None;
      this.tracked_tag := Unique(0, 0);
+     this.activeCallId := 0;
     }
    method newId() returns (ret: nat) 
    modifies this;
@@ -39,9 +44,25 @@ class State {
    {
      if (*) 
      {
-       this.tracked_tag := p.tag;
+       // this.tracked_tag := p.tag;
        this.ptrOnStack := Some(p);
      }
+   }
+
+   method track(p: Pointer){
+     this.tracked_tag := p.tag;
+     this.ptrOnStack := Some(p);
+   }
+
+   // this function is used to generate a mutable ref from a value
+   // e.g., let mut local = 0
+   //       let x = & mut loal;
+   //       generate_mutable_ref();
+   method generate_mutable_ref() returns(np: Pointer){
+     var addr := this.newId(); 
+     var tag_id := this.newId();
+     
+     np := new Pointer(addr, Unique(tag_id, activeCallId), null, None);   
    }
 
    // for mutable borrow
@@ -65,8 +86,8 @@ class State {
        match this.ptrOnStack
        case None => 
        case Some(ptr) => 
-           assert ptr.tag == this.tracked_tag;
-           assert p.tag != ptr.tag;
+           // assert ptr.tag == this.tracked_tag;  
+           // assert p.tag != ptr.tag;
            if (ptr.ancestor == Some(p)) 
            {
              match p.tag
@@ -231,6 +252,20 @@ class Pointer
       s.push(np);
        
       return np;
+  }
+
+  method initCall(s: State) returns(np: Pointer)
+    modifies s;
+  {
+    var callId := s.newId();
+    s.activeCallId := callId;
+    np := retag(s, callId);
+  }
+
+  method endCall(s : State, oldCallId: nat)
+    modifies s;
+  {
+    s.activeCallId := oldCallId;
   }
 
   method retag(s: State, funID: nat) returns(np: Pointer)
