@@ -49,7 +49,7 @@ class State {
      }
    }
 
-    // this function is used to generate a mutable ref from a value
+   // this function is used to generate a mutable ref from a value
    // e.g., let mut local = 0
    //       let x = & mut loal;
    //       generate_mutable_ref();
@@ -157,8 +157,9 @@ class State {
            assert p.tag != ptr.tag;
            if (ptr.ancestor == Some(p) && p.tag.Unique?) 
            {
-             match p.tag
+             match p.tag{
              case Unique(t, c) => assert c == 0;
+             }
              this.ptrOnStack := None;
            }
        }

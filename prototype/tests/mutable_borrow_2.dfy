@@ -97,7 +97,7 @@ method good_client()
 
   /*------- inlining mut_borrow end --------------------------------*/
 
-  // rust code: let y = &mut *x;
+  // rust code: let y = &mut local;
   // spc:       var yb = xp.mut_borrow(s, 0);
 
   /*------- inlining mut_borrow begin --------------------------------*/
