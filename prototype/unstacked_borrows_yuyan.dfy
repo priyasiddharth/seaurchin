@@ -1,6 +1,8 @@
 // if the callid != 0, then it is protected
 // it the callid == 0, the it is not protected
+// if a pointer is a raw pointer, then its tag is SharedRW(-1, _)
 datatype Tag = Unique(t: nat, c: nat) | SharedRO(t: nat, c: nat) | SharedRW(t: nat, c: nat) 
+              | Disabled
 
 datatype MaybePointer = None | Some(p:Pointer)
 
@@ -59,8 +61,40 @@ class State {
      var addr := this.newId(); 
      var tag_id := this.newId();
      
-     np := new Pointer(addr, Unique(tag_id, activeCallId), None, None);   
+     np := new Pointer(addr, Unique(tag_id, activeCallId), None, None, false); 
+     push(np);  
    }
+
+   // this function is used to generate a sharedro ref from a value
+   // e.g., let mut local = 0
+   //       let x = & loal;
+   //       generate_sharedro_ref();
+   method generate_sharedro_ref() returns(np: Pointer)
+   modifies this;
+   {
+     var addr := this.newId(); 
+     var tag_id := this.newId();
+     
+     np := new Pointer(addr, SharedRO(tag_id, activeCallId), None, None, false);  
+      push(np); 
+   }
+
+   // this function is used to generate a sharedro ref from a value
+   // e.g., let mut local = 0
+   //       let x = & loal;
+   //       generate_sharedro_ref();
+   method generate_sharedrw_ref(p: Pointer) returns(np: Pointer)
+   modifies this;
+   {
+    // Raw pointer can only be generated from mutable reference  
+    assert p.tag.Unique?;
+     use(p);
+     var tag_id := this.newId();
+     
+     np := new Pointer(p.addr, SharedRW(-1, activeCallId), Some(p), Some(p), false); 
+     push(np);  
+   }
+
 
    // for mutable borrow
    method use_mutable(p: Pointer) 
@@ -103,37 +137,21 @@ class State {
    modifies this;
    {
 
-      // if using a pointer with tracked_tag, and the pointer is 
-     // not in the stack, then this is an error
-     // all other cases are ok
+      assert p.tag.SharedRW? && p.tag.t == -1;
+     // using a raw pointer, SharedRW(-1, _) or the pointer must be on stack
      if (p.tag == this.tracked_tag) 
      {
        assert this.ptrOnStack != None;
-     } 
-     else
-     {
-       // if tracked pointer is on stack, and its predecessor 
-       // is being used, then
-       //// if the predecessor is raw pointer, then this is an error
-       //// if the predecessor is mutable borrow, then it is ok (do nothing)
-
-       match this.ptrOnStack{
-       case None => 
-       case Some(ptr) => 
-           assert ptr.tag == this.tracked_tag;
-           assert p.tag != ptr.tag;
-           if (ptr.ancestor == Some(p) && p.tag.SharedRW?) 
-           {
-             assert false;
-           }
-       }   
-
+     } else{
+       assert this.tracked_tag.SharedRW?;
      }
+     
    }
 
-   method use_shareread(p: Pointer)
+   method use_sharedro(p: Pointer)
    modifies this;
    {
+    assert(p.tag.SharedRO?);
      // if using a pointer with tracked_tag, and the pointer is 
      // not in the stack, then this is an error
      // all other cases are ok
@@ -153,8 +171,6 @@ class State {
        match this.ptrOnStack{
        case None => 
        case Some(ptr) => 
-           assert ptr.tag == this.tracked_tag;
-           assert p.tag != ptr.tag;
            if (ptr.ancestor == Some(p) && p.tag.Unique?) 
            {
              match p.tag{
@@ -165,6 +181,10 @@ class State {
        }
 
      }
+   }
+
+   method use(p: Pointer){
+     p.use(this);
    }
     
 } 
@@ -180,14 +200,17 @@ class Pointer
   // -- some ancestor of the pointer
   // -- this is the prophecy of an intersting ancesstor
   var ancestor: MaybePointer;
+  // -- predicate: true means it is a raw pointer
+  var raw_pointer: bool;
     
-  constructor(addr: nat, tag: Tag, pred: MaybePointer, ances: MaybePointer) 
+  constructor(addr: nat, tag: Tag, pred: MaybePointer, ances: MaybePointer, raw_pointer: bool) 
   ensures this.addr == addr && this.tag == tag && this.pred == pred && this.ancestor == ances;
     {
     this.addr := addr;
     this.tag := tag;
     this.pred := pred;
     this.ancestor := ances;
+    this.raw_pointer := raw_pointer;
   }
 
   // if it is not protected, passing 0 to funID
@@ -204,7 +227,7 @@ class Pointer
       ancestor := this.ancestor;
     }
     var id := s.newId();
-    np := new Pointer(this.addr, Unique(id, funID), Some(this), ancestor);
+    np := new Pointer(this.addr, Unique(id, funID), Some(this), ancestor, false);
     s.push(np);
     return np;
   }
@@ -220,7 +243,7 @@ class Pointer
         s.use_mutable(this);
     } else if (this.tag.SharedRO?){
         // shared-borrow from a SharedRO reference
-      //  s.use_shareread(this);
+         s.use_sharedro(this);
     } 
      var ancestor := Some(this);
     if (*) 
@@ -228,7 +251,7 @@ class Pointer
       ancestor := this.ancestor;
     }
     var id := s.newId();
-    np := new Pointer(this.addr, SharedRO(id, funID), Some(this), ancestor);
+    np := new Pointer(this.addr, SharedRO(id, funID), Some(this), ancestor, false);
     s.push(np);
         
     return np;
@@ -240,14 +263,13 @@ class Pointer
  // requires this.tag.SharedRW?
   modifies s;
   {
-      // we can only raw borrow from SharedRW
-      assert !this.tag.SharedRW?; // debug: should uncomment it
+      assert this.tag.SharedRW? && this.tag.t == -1; 
       var ancestor := Some(this);
       if(*){
           ancestor := this.ancestor;
       }
       var id := s.newId();
-      np := new Pointer(this.addr, SharedRW(id, funID), Some(this), ancestor);
+      np := new Pointer(this.addr, Unique(id, funID), Some(this), ancestor, true);
       s.push(np);
        
       return np;
@@ -299,7 +321,7 @@ class Pointer
   {
       match this.tag
       case Unique(_, _) => s.use_mutable(this);
-      case SharedRO(_, _) => s.use_shareread(this);
+      case SharedRO(_, _) => s.use_sharedro(this);
       case SharedRW(_, _) => s.use_raw(this); 
   }
 }
