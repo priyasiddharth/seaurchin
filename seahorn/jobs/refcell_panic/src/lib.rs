@@ -2,8 +2,8 @@
 
 use verification_annotations as verifier;
 
-use std::cell::RefCell;
 use std::cell;
+use std::cell::RefCell;
 
 #[test]
 fn test_nopanic() {
@@ -13,14 +13,13 @@ fn test_nopanic() {
     // only one mut borrow; so no panic
 }
 
-
 #[test]
 fn test_panic() {
     let c = RefCell::new(5);
 
     let m = c.borrow_mut();
     let b = c.borrow(); // this causes a panic
-    // panic leads to __VERIFIER_ERROR
+                        // panic leads to __VERIFIER_ERROR
 }
 
 /*
@@ -34,19 +33,16 @@ fn test_panic() {
 #[test]
 fn test_mb_nopanic() {
     let val: u32 = verifier::AbstractValue::abstract_value();
-    let nd_flag_val: isize = verifier::AbstractValue::abstract_where(
-        |x| cell::is_unused(*x));
+    let nd_flag_val: isize = verifier::AbstractValue::abstract_where(|x| cell::is_unused(*x));
     let c = RefCell::new_with_flag(val, nd_flag_val);
     let m = c.borrow_mut();
 }
-
 
 #[test]
 fn test_mb_nopanic2() {
     let val: u32 = verifier::AbstractValue::abstract_value();
     let c = RefCell::new(val);
-    let nd_borrow_flag: isize = verifier::AbstractValue::abstract_where(
-        |x| cell::is_unused(*x));
+    let nd_borrow_flag: isize = verifier::AbstractValue::abstract_where(|x| cell::is_unused(*x));
     c.set_borrow_state(nd_borrow_flag);
     let m = c.borrow_mut();
 }
@@ -55,9 +51,9 @@ fn test_mb_nopanic2() {
 fn test_b_nopanic() {
     let val: u32 = verifier::AbstractValue::abstract_value();
     let c = RefCell::new(val);
-    let nd_borrow_flag: isize = verifier::AbstractValue::abstract_where(
-        |x| cell::is_unused(*x) ||
-            (cell::is_reading(*x) && !cell::is_reader_limit_reached(*x)));
+    let nd_borrow_flag: isize = verifier::AbstractValue::abstract_where(|x| {
+        cell::is_unused(*x) || (cell::is_reading(*x) && !cell::is_reader_limit_reached(*x))
+    });
     c.set_borrow_state(nd_borrow_flag);
     let m = c.borrow();
 }
@@ -69,8 +65,8 @@ fn test_b_nopanic() {
 fn test_b_to_mb_rollover_panic_sat() {
     let val: u32 = verifier::AbstractValue::abstract_value();
     let c = RefCell::new(val);
-    let nd_borrow_flag: isize = verifier::AbstractValue::abstract_where(
-        |x| cell::is_unused(*x) || cell::is_reading(*x));
+    let nd_borrow_flag: isize =
+        verifier::AbstractValue::abstract_where(|x| cell::is_unused(*x) || cell::is_reading(*x));
     c.set_borrow_state(nd_borrow_flag);
     let m = c.borrow();
 }

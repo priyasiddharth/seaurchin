@@ -1,0 +1,7 @@
+#[target.x86_64-unknown-linux-gnu]
+#stage = 0
+
+[dependencies]
+alloc = {}
+std = {}
+
