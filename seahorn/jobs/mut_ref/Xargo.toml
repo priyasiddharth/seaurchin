@@ -1,0 +1,6 @@
+[dependencies.std]
+stage = 0
+
+[dependencies.test]
+path = "../../lib/toolchain/rust/src/libtest"
+stage = 1

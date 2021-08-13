@@ -6,7 +6,7 @@ use verification_annotations as verifier;
 fn test_string_from_bytes_panic() {
     let b1: u8 = verifier::AbstractValue::abstract_value();
     let b2: u8 = verifier::AbstractValue::abstract_value();
-    let bytes = vec![b1, b2];
+    let bytes: [u32; 3] = verifier::AbstractValue::abstract_value();
     let val = std::string::String::from_utf8(bytes).unwrap();
 }
 

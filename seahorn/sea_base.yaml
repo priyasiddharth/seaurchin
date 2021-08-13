@@ -31,15 +31,17 @@ verify_options:
 # stack allocation from a symbolic starting point
   horn-explicit-sp0: false
 # lambdas for memory
-  horn-bv2-lambdas: ''
+#  horn-bv2-lambdas: ''
 # use z3 simplifier during vcgen
   horn-bv2-simplify: true
 # wide memory manager to track pointer sizes
-  horn-bv2-extra-widemem: ''
+#  horn-bv2-extra-widemem: ''
 # intermediate results in human readable form for debugging
   '-S': ''
 # keep intermediate results for debugging 
   keep-temps: ''
-  temp-dir: /tmp/verify-c-common
+  temp-dir: /tmp/alias-rust
 # time and result stats
   horn-stats: true
+# output smt2
+  o: '/tmp/alias-rust/o.smt2'
