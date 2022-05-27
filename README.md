@@ -1,3 +1,5 @@
+## What is Seaurchin
+Seaurchin is a frontend for [Seahorn](https://github.com/seahorn/seahorn) to verify Rust programs using bounded model checking.
 ## Installation
 
 ### Preequisites
